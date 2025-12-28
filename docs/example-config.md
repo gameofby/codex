@@ -37,7 +37,7 @@ model_provider = "openai"
 # Reasoning & Verbosity (Responses API capable models)
 ################################################################################
 
-# Reasoning effort: minimal | low | medium | high (default: medium)
+# Reasoning effort: minimal | low | medium | high | xhigh (default: medium; xhigh on gpt-5.1-codex-max and gpt-5.2)
 model_reasoning_effort = "medium"
 
 # Reasoning summary: auto | concise | detailed | none (default: auto)
@@ -49,17 +49,14 @@ model_verbosity = "medium"
 # Force-enable reasoning summaries for current model (default: false)
 model_supports_reasoning_summaries = false
 
-# Force reasoning summary format: none | experimental (default: none)
-model_reasoning_summary_format = "none"
-
 ################################################################################
 # Instruction Overrides
 ################################################################################
 
-# Additional user instructions appended after AGENTS.md. Default: unset.
+# Additional user instructions inject before AGENTS.md. Default: unset.
 # developer_instructions = ""
 
-# Optional legacy base instructions override (prefer AGENTS.md). Default: unset.
+# (Ignored) Optional legacy base instructions override (prefer AGENTS.md). Default: unset.
 # instructions = ""
 
 # Inline override for the history compaction prompt. Default: unset.
@@ -106,8 +103,8 @@ exclude_slash_tmp = false
 [shell_environment_policy]
 # inherit: all (default) | core | none
 inherit = "all"
-# Skip default excludes for names containing KEY/TOKEN (case-insensitive). Default: false
-ignore_default_excludes = false
+# Skip default excludes for names containing KEY/SECRET/TOKEN (case-insensitive). Default: true
+ignore_default_excludes = true
 # Case-insensitive glob patterns to remove (e.g., "AWS_*", "AZURE_*"). Default: []
 exclude = []
 # Explicit key/value overrides (always win). Default: {}
@@ -124,7 +121,7 @@ experimental_use_profile = false
 [history]
 # save-all (default) | none
 persistence = "save-all"
-# Maximum bytes for history file (currently not enforced). Example: 5242880
+# Maximum bytes for history file; oldest entries are trimmed when exceeded. Example: 5242880
 # max_bytes = 0
 
 # URI scheme for clickable citations: vscode (default) | vscode-insiders | windsurf | cursor | none
@@ -214,23 +211,15 @@ view_image = true
 [features]
 # Leave this table empty to accept defaults. Set explicit booleans to opt in/out.
 unified_exec = false
-rmcp_client = false
 apply_patch_freeform = false
 view_image_tool = true
 web_search_request = false
-experimental_sandbox_command_assessment = false
-ghost_commit = false
 enable_experimental_windows_sandbox = false
+skills = false
 
 ################################################################################
 # Experimental toggles (legacy; prefer [features])
 ################################################################################
-
-# Use experimental unified exec tool. Default: false
-experimental_use_unified_exec_tool = false
-
-# Use experimental Rust MCP client (enables OAuth for HTTP MCP). Default: false
-experimental_use_rmcp_client = false
 
 # Include apply_patch via freeform editing path (affects default tool set). Default: false
 experimental_use_freeform_apply_patch = false
@@ -317,12 +306,9 @@ experimental_use_freeform_apply_patch = false
 # model_reasoning_summary = "auto"
 # model_verbosity = "medium"
 # chatgpt_base_url = "https://chatgpt.com/backend-api/"
-# experimental_compact_prompt_file = "compact_prompt.txt"
+# experimental_compact_prompt_file = "./compact_prompt.txt"
 # include_apply_patch_tool = false
-# experimental_use_unified_exec_tool = false
-# experimental_use_rmcp_client = false
 # experimental_use_freeform_apply_patch = false
-# experimental_sandbox_command_assessment = false
 # tools_web_search = false
 # tools_view_image = true
 # features = { unified_exec = false }
@@ -349,30 +335,28 @@ environment = "dev"
 exporter = "none"
 
 # Example OTLP/HTTP exporter configuration
-# [otel]
-# exporter = { otlp-http = {
-#   endpoint = "https://otel.example.com/v1/logs",
-#   protocol = "binary",                      # "binary" | "json"
-#   headers = { "x-otlp-api-key" = "${OTLP_TOKEN}" }
-# }}
+# [otel.exporter."otlp-http"]
+# endpoint = "https://otel.example.com/v1/logs"
+# protocol = "binary"                         # "binary" | "json"
+
+# [otel.exporter."otlp-http".headers]
+# "x-otlp-api-key" = "${OTLP_TOKEN}"
 
 # Example OTLP/gRPC exporter configuration
-# [otel]
-# exporter = { otlp-grpc = {
-#   endpoint = "https://otel.example.com:4317",
-#   headers = { "x-otlp-meta" = "abc123" }
-# }}
+# [otel.exporter."otlp-grpc"]
+# endpoint = "https://otel.example.com:4317",
+# headers = { "x-otlp-meta" = "abc123" }
 
 # Example OTLP exporter with mutual TLS
-# [otel]
-# exporter = { otlp-http = {
-#   endpoint = "https://otel.example.com/v1/logs",
-#   protocol = "binary",
-#   headers = { "x-otlp-api-key" = "${OTLP_TOKEN}" },
-#   tls = {
-#     ca-certificate = "certs/otel-ca.pem",
-#     client-certificate = "/etc/codex/certs/client.pem",
-#     client-private-key = "/etc/codex/certs/client-key.pem",
-#   }
-# }}
+# [otel.exporter."otlp-http"]
+# endpoint = "https://otel.example.com/v1/logs"
+# protocol = "binary"
+
+# [otel.exporter."otlp-http".headers]
+# "x-otlp-api-key" = "${OTLP_TOKEN}"
+
+# [otel.exporter."otlp-http".tls]
+# ca-certificate = "certs/otel-ca.pem"
+# client-certificate = "/etc/codex/certs/client.pem"
+# client-private-key = "/etc/codex/certs/client-key.pem"
 ```
