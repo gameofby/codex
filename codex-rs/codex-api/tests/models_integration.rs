@@ -1,9 +1,9 @@
 use codex_api::AuthProvider;
 use codex_api::ModelsClient;
-use codex_api::provider::Provider;
-use codex_api::provider::RetryConfig;
-use codex_api::provider::WireApi;
+use codex_api::Provider;
+use codex_api::RetryConfig;
 use codex_client::ReqwestTransport;
+use codex_protocol::config_types::ReasoningSummary;
 use codex_protocol::openai_models::ConfigShellToolType;
 use codex_protocol::openai_models::ModelInfo;
 use codex_protocol::openai_models::ModelVisibility;
@@ -11,8 +11,10 @@ use codex_protocol::openai_models::ModelsResponse;
 use codex_protocol::openai_models::ReasoningEffort;
 use codex_protocol::openai_models::ReasoningEffortPreset;
 use codex_protocol::openai_models::TruncationPolicyConfig;
+use codex_protocol::openai_models::default_input_modalities;
 use http::HeaderMap;
 use http::Method;
+use std::sync::Arc;
 use wiremock::Mock;
 use wiremock::MockServer;
 use wiremock::ResponseTemplate;
@@ -23,9 +25,7 @@ use wiremock::matchers::path;
 struct DummyAuth;
 
 impl AuthProvider for DummyAuth {
-    fn bearer_token(&self) -> Option<String> {
-        None
-    }
+    fn add_auth_headers(&self, _headers: &mut HeaderMap) {}
 }
 
 fn provider(base_url: &str) -> Provider {
@@ -33,7 +33,6 @@ fn provider(base_url: &str) -> Provider {
         name: "test".to_string(),
         base_url: base_url.to_string(),
         query_params: None,
-        wire: WireApi::Responses,
         headers: HeaderMap::new(),
         retry: RetryConfig {
             max_attempts: 1,
@@ -56,7 +55,7 @@ async fn models_client_hits_models_endpoint() {
             slug: "gpt-test".to_string(),
             display_name: "gpt-test".to_string(),
             description: Some("desc".to_string()),
-            default_reasoning_level: ReasoningEffort::Medium,
+            default_reasoning_level: Some(ReasoningEffort::Medium),
             supported_reasoning_levels: vec![
                 ReasoningEffortPreset {
                     effort: ReasoningEffort::Low,
@@ -75,18 +74,37 @@ async fn models_client_hits_models_endpoint() {
             visibility: ModelVisibility::List,
             supported_in_api: true,
             priority: 1,
+            additional_speed_tiers: Vec::new(),
+            service_tiers: Vec::new(),
+            default_service_tier: None,
             upgrade: None,
-            base_instructions: None,
+            base_instructions: "base instructions".to_string(),
+            model_messages: None,
+            include_skills_usage_instructions: false,
             supports_reasoning_summaries: false,
+            default_reasoning_summary: ReasoningSummary::Auto,
             support_verbosity: false,
             default_verbosity: None,
+            availability_nux: None,
             apply_patch_tool_type: None,
-            truncation_policy: TruncationPolicyConfig::bytes(10_000),
+            web_search_tool_type: Default::default(),
+            truncation_policy: TruncationPolicyConfig::bytes(/*limit*/ 10_000),
             supports_parallel_tool_calls: false,
-            context_window: None,
+            supports_image_detail_original: false,
+            context_window: Some(272_000),
+            max_context_window: None,
+            auto_compact_token_limit: None,
+            comp_hash: None,
+            effective_context_window_percent: 95,
             experimental_supported_tools: Vec::new(),
+            input_modalities: default_input_modalities(),
+            used_fallback_model_metadata: false,
+            supports_search_tool: false,
+            use_responses_lite: false,
+            auto_review_model_override: None,
+            tool_mode: None,
+            multi_agent_version: None,
         }],
-        etag: String::new(),
     };
 
     Mock::given(method("GET"))
@@ -100,15 +118,15 @@ async fn models_client_hits_models_endpoint() {
         .await;
 
     let transport = ReqwestTransport::new(reqwest::Client::new());
-    let client = ModelsClient::new(transport, provider(&base_url), DummyAuth);
+    let client = ModelsClient::new(transport, provider(&base_url), Arc::new(DummyAuth));
 
-    let result = client
+    let (models, _) = client
         .list_models("0.1.0", HeaderMap::new())
         .await
         .expect("models request should succeed");
 
-    assert_eq!(result.models.len(), 1);
-    assert_eq!(result.models[0].slug, "gpt-test");
+    assert_eq!(models.len(), 1);
+    assert_eq!(models[0].slug, "gpt-test");
 
     let received = server
         .received_requests()
